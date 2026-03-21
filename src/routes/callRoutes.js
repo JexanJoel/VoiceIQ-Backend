@@ -4,6 +4,7 @@ import {
   getAllCalls,
   getCallById,
   getFlaggedCalls,
+  deleteCall,
 } from "../controllers/callController.js";
 import { upload } from "../middleware/uploadMiddleware.js";
 
@@ -13,5 +14,6 @@ router.post("/upload", upload.single("audio"), uploadCall);
 router.get("/", getAllCalls);
 router.get("/flagged", getFlaggedCalls);
 router.get("/:id", getCallById);
+router.delete("/:id", deleteCall);
 
 export default router;

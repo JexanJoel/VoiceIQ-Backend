@@ -18,7 +18,6 @@ export const uploadCall = async (req, res) => {
   if (!file) return error(res, "No audio file uploaded", 400);
 
   try {
-    // 1. Upload to Supabase Storage
     const fileBuffer = fs.readFileSync(file.path);
     const storagePath = `calls/${Date.now()}-${file.originalname}`;
 
@@ -28,13 +27,9 @@ export const uploadCall = async (req, res) => {
 
     if (storageError) throw new Error(storageError.message);
 
-    // 2. Transcribe with Groq Whisper
     const transcription = await transcribeAudio(file.path);
-
-    // 3. Analyze with Groq Llama
     const analysis = await analyzeTranscript(transcription.text, DEFAULT_SOP);
 
-    // 4. Save to Supabase DB
     const { data: callRecord, error: dbError } = await supabase
       .from("calls")
       .insert({
@@ -56,7 +51,6 @@ export const uploadCall = async (req, res) => {
 
     if (dbError) throw new Error(dbError.message);
 
-    // 5. Cleanup local file
     fs.unlinkSync(file.path);
 
     return success(res, callRecord, "Call processed successfully", 201);
@@ -109,3 +103,35 @@ export const getFlaggedCalls = async (req, res) => {
     return error(res, err.message);
   }
 };
+
+export const deleteCall = async (req, res) => {
+  try {
+    const { id } = req.params
+
+    const { data: call, error: fetchError } = await supabase
+      .from("calls")
+      .select("storage_path")
+      .eq("id", id)
+      .single()
+
+    if (fetchError) throw new Error(fetchError.message)
+    if (!call) return error(res, "Call not found", 404)
+
+    if (call.storage_path) {
+      await supabase.storage
+        .from("voiceiq-calls")
+        .remove([call.storage_path])
+    }
+
+    const { error: dbError } = await supabase
+      .from("calls")
+      .delete()
+      .eq("id", id)
+
+    if (dbError) throw new Error(dbError.message)
+
+    return success(res, null, "Call deleted successfully")
+  } catch (err) {
+    return error(res, err.message)
+  }
+}
