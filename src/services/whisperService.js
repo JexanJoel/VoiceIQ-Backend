@@ -11,7 +11,6 @@ export const transcribeAudio = async (filePath) => {
       file: fs.createReadStream(filePath),
       model: "whisper-large-v3",
       response_format: "verbose_json",
-      language: "hi", // handles Hinglish + Tanglish well
     });
 
     return {
