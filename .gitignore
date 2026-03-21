@@ -1,0 +1,29 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Dependencies
+node_modules/
+
+# Environment variables — NEVER commit this
+.env
+.env.local
+.env.production
+
+# Upload temp folder
+uploads/
+
+# Build
+dist/
+
+# Editor
+.vscode/
+.idea/
+.DS_Store
+
+# Misc
+*.local
+thumbs.db
