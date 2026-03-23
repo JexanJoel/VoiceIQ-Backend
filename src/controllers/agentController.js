@@ -20,7 +20,6 @@ export const createAgent = async (req, res) => {
     const { name } = req.body;
     if (!name || !name.trim()) return error(res, "Agent name is required", 400);
 
-    // Check for duplicate name
     const { data: existing } = await supabase
       .from("agents")
       .select("id")
@@ -59,7 +58,6 @@ export const deleteAgent = async (req, res) => {
 
 export const getAgentStats = async (req, res) => {
   try {
-    // Get all calls with agent info for this user's agents
     const { data: calls, error: dbError } = await supabase
       .from("calls")
       .select("agent_id, agent_name, sop_compliance_percentage, sentiment, violations, created_at")
@@ -67,8 +65,7 @@ export const getAgentStats = async (req, res) => {
 
     if (dbError) throw new Error(dbError.message);
 
-    // Group by agent
-    const agentMap: Record<string, any> = {};
+    const agentMap = {};
 
     calls.forEach((call) => {
       const key = call.agent_id || "unknown";
@@ -98,21 +95,18 @@ export const getAgentStats = async (req, res) => {
       }
     });
 
-    // Build stats array
-    const stats = Object.values(agentMap).map((a: any) => {
+    const stats = Object.values(agentMap).map((a) => {
       const avgCompliance = a.total_calls > 0
         ? Math.round(a.total_compliance / a.total_calls)
         : 0;
 
-      // Find most common violation
-      const violationCounts: Record<string, number> = {};
-      a.all_violations.forEach((v: string) => {
+      const violationCounts = {};
+      a.all_violations.forEach((v) => {
         violationCounts[v] = (violationCounts[v] || 0) + 1;
       });
       const topViolation = Object.entries(violationCounts)
         .sort((x, y) => y[1] - x[1])[0]?.[0] || null;
 
-      // Dominant sentiment
       const sentiment = Object.entries(a.sentiment_counts)
         .sort((x, y) => y[1] - x[1])[0]?.[0] || 'neutral';
 
@@ -126,7 +120,6 @@ export const getAgentStats = async (req, res) => {
       };
     });
 
-    // Sort by avg compliance descending (leaderboard)
     stats.sort((a, b) => b.avg_compliance - a.avg_compliance);
 
     return success(res, stats);
