@@ -5,6 +5,7 @@ import {
   getCallById,
   getFlaggedCalls,
   deleteCall,
+  getSignedUrl,
 } from "../controllers/callController.js";
 import { upload } from "../middleware/uploadMiddleware.js";
 
@@ -13,6 +14,7 @@ const router = express.Router();
 router.post("/upload", upload.single("audio"), uploadCall);
 router.get("/", getAllCalls);
 router.get("/flagged", getFlaggedCalls);
+router.get("/:id/audio", getSignedUrl);
 router.get("/:id", getCallById);
 router.delete("/:id", deleteCall);
 

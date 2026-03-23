@@ -50,9 +50,7 @@ export const uploadCall = async (req, res) => {
       .single();
 
     if (dbError) throw new Error(dbError.message);
-
     fs.unlinkSync(file.path);
-
     return success(res, callRecord, "Call processed successfully", 201);
   } catch (err) {
     if (file?.path && fs.existsSync(file.path)) fs.unlinkSync(file.path);
@@ -66,7 +64,6 @@ export const getAllCalls = async (req, res) => {
       .from("calls")
       .select("*")
       .order("created_at", { ascending: false });
-
     if (dbError) throw new Error(dbError.message);
     return success(res, data);
   } catch (err) {
@@ -81,7 +78,6 @@ export const getCallById = async (req, res) => {
       .select("*")
       .eq("id", req.params.id)
       .single();
-
     if (dbError) throw new Error(dbError.message);
     return success(res, data);
   } catch (err) {
@@ -96,7 +92,6 @@ export const getFlaggedCalls = async (req, res) => {
       .select("*")
       .lt("sop_compliance_percentage", 70)
       .order("created_at", { ascending: false });
-
     if (dbError) throw new Error(dbError.message);
     return success(res, data);
   } catch (err) {
@@ -106,32 +101,46 @@ export const getFlaggedCalls = async (req, res) => {
 
 export const deleteCall = async (req, res) => {
   try {
-    const { id } = req.params
+    const { id } = req.params;
+    const { data: call, error: fetchError } = await supabase
+      .from("calls")
+      .select("storage_path")
+      .eq("id", id)
+      .single();
+    if (fetchError) throw new Error(fetchError.message);
+    if (!call) return error(res, "Call not found", 404);
+    if (call.storage_path) {
+      await supabase.storage.from("voiceiq-calls").remove([call.storage_path]);
+    }
+    const { error: dbError } = await supabase.from("calls").delete().eq("id", id);
+    if (dbError) throw new Error(dbError.message);
+    return success(res, null, "Call deleted successfully");
+  } catch (err) {
+    return error(res, err.message);
+  }
+};
+
+export const getSignedUrl = async (req, res) => {
+  try {
+    const { id } = req.params;
 
     const { data: call, error: fetchError } = await supabase
       .from("calls")
       .select("storage_path")
       .eq("id", id)
-      .single()
+      .single();
 
-    if (fetchError) throw new Error(fetchError.message)
-    if (!call) return error(res, "Call not found", 404)
+    if (fetchError) throw new Error(fetchError.message);
+    if (!call) return error(res, "Call not found", 404);
 
-    if (call.storage_path) {
-      await supabase.storage
-        .from("voiceiq-calls")
-        .remove([call.storage_path])
-    }
+    const { data, error: urlError } = await supabase.storage
+      .from("voiceiq-calls")
+      .createSignedUrl(call.storage_path, 3600); // 1 hour expiry
 
-    const { error: dbError } = await supabase
-      .from("calls")
-      .delete()
-      .eq("id", id)
+    if (urlError) throw new Error(urlError.message);
 
-    if (dbError) throw new Error(dbError.message)
-
-    return success(res, null, "Call deleted successfully")
+    return success(res, { url: data.signedUrl });
   } catch (err) {
-    return error(res, err.message)
+    return error(res, err.message);
   }
-}
+};
