@@ -5,6 +5,7 @@ import callRoutes from "./src/routes/callRoutes.js";
 import transcriptRoutes from "./src/routes/transcriptRoutes.js";
 import analyticsRoutes from "./src/routes/analyticsRoutes.js";
 import sopRoutes from "./src/routes/sopRoutes.js";
+import agentRoutes from "./src/routes/agentRoutes.js";
 import { authenticate } from "./src/middleware/authMiddleware.js";
 
 dotenv.config();
@@ -20,7 +21,6 @@ app.use(cors({
 }));
 
 app.options('*', cors());
-
 app.use(express.json());
 
 app.get("/", (req, res) => {
@@ -31,6 +31,7 @@ app.use("/api/calls", authenticate, callRoutes);
 app.use("/api/transcripts", authenticate, transcriptRoutes);
 app.use("/api/analytics", authenticate, analyticsRoutes);
 app.use("/api/sop", authenticate, sopRoutes);
+app.use("/api/agents", authenticate, agentRoutes);
 
 app.listen(PORT, () => {
   console.log(`VoiceIQ backend running on port ${PORT}`);

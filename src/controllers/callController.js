@@ -22,7 +22,6 @@ const getUserSOP = async (userId) => {
     .order("created_at", { ascending: true });
 
   if (dbError || !data || data.length === 0) return DEFAULT_SOP;
-
   return data.map((r, i) => `${i + 1}. [${r.category.toUpperCase()}] ${r.rule_text}`).join("\n");
 };
 
@@ -41,10 +40,22 @@ export const uploadCall = async (req, res) => {
     if (storageError) throw new Error(storageError.message);
 
     const transcription = await transcribeAudio(file.path);
-
-    // Use user's custom SOP rules or fall back to default
     const sopRules = await getUserSOP(req.user.id);
     const analysis = await analyzeTranscript(transcription.text, sopRules);
+
+    // Get agent info if provided
+    const agentId = req.body.agent_id || null;
+    let agentName = 'Unknown Agent';
+
+    if (agentId) {
+      const { data: agent } = await supabase
+        .from("agents")
+        .select("name")
+        .eq("id", agentId)
+        .eq("user_id", req.user.id)
+        .single();
+      if (agent) agentName = agent.name;
+    }
 
     const { data: callRecord, error: dbError } = await supabase
       .from("calls")
@@ -61,6 +72,8 @@ export const uploadCall = async (req, res) => {
         passed_checks: analysis.passed_checks,
         payment_preference: analysis.payment_preference,
         summary: analysis.summary,
+        agent_id: agentId,
+        agent_name: agentName,
       })
       .select()
       .single();
