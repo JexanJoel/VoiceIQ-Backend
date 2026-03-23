@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import callRoutes from "./src/routes/callRoutes.js";
 import transcriptRoutes from "./src/routes/transcriptRoutes.js";
 import analyticsRoutes from "./src/routes/analyticsRoutes.js";
+import sopRoutes from "./src/routes/sopRoutes.js";
 import { authenticate } from "./src/middleware/authMiddleware.js";
 
 dotenv.config();
@@ -12,28 +13,24 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cors({
-  origin: [
-    'https://voice-iq-five.vercel.app'
-  ],
+  origin: 'https://voice-iq-five.vercel.app',
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Handle preflight requests
 app.options('*', cors());
 
 app.use(express.json());
 
-// Health check (public)
 app.get("/", (req, res) => {
   res.json({ status: "VoiceIQ Backend Running 🎙️" });
 });
 
-// Protected routes
 app.use("/api/calls", authenticate, callRoutes);
 app.use("/api/transcripts", authenticate, transcriptRoutes);
 app.use("/api/analytics", authenticate, analyticsRoutes);
+app.use("/api/sop", authenticate, sopRoutes);
 
 app.listen(PORT, () => {
   console.log(`VoiceIQ backend running on port ${PORT}`);

@@ -13,6 +13,19 @@ const DEFAULT_SOP = `
 6. Agent must end the call with a closing statement
 `;
 
+const getUserSOP = async (userId) => {
+  const { data, error: dbError } = await supabase
+    .from("sop_rules")
+    .select("rule_text, category")
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .order("created_at", { ascending: true });
+
+  if (dbError || !data || data.length === 0) return DEFAULT_SOP;
+
+  return data.map((r, i) => `${i + 1}. [${r.category.toUpperCase()}] ${r.rule_text}`).join("\n");
+};
+
 export const uploadCall = async (req, res) => {
   const file = req.file;
   if (!file) return error(res, "No audio file uploaded", 400);
@@ -28,7 +41,10 @@ export const uploadCall = async (req, res) => {
     if (storageError) throw new Error(storageError.message);
 
     const transcription = await transcribeAudio(file.path);
-    const analysis = await analyzeTranscript(transcription.text, DEFAULT_SOP);
+
+    // Use user's custom SOP rules or fall back to default
+    const sopRules = await getUserSOP(req.user.id);
+    const analysis = await analyzeTranscript(transcription.text, sopRules);
 
     const { data: callRecord, error: dbError } = await supabase
       .from("calls")
@@ -123,22 +139,17 @@ export const deleteCall = async (req, res) => {
 export const getSignedUrl = async (req, res) => {
   try {
     const { id } = req.params;
-
     const { data: call, error: fetchError } = await supabase
       .from("calls")
       .select("storage_path")
       .eq("id", id)
       .single();
-
     if (fetchError) throw new Error(fetchError.message);
     if (!call) return error(res, "Call not found", 404);
-
     const { data, error: urlError } = await supabase.storage
       .from("voiceiq-calls")
-      .createSignedUrl(call.storage_path, 3600); // 1 hour expiry
-
+      .createSignedUrl(call.storage_path, 3600);
     if (urlError) throw new Error(urlError.message);
-
     return success(res, { url: data.signedUrl });
   } catch (err) {
     return error(res, err.message);
