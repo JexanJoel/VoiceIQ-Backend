@@ -41,11 +41,15 @@ export const uploadCall = async (req, res) => {
 
     const transcription = await transcribeAudio(file.path);
     const sopRules = await getUserSOP(req.user.id);
-    const analysis = await analyzeTranscript(transcription.text, sopRules);
 
-    // Get agent info if provided
+    // Pass timestamped transcript to AI for better violation detection
+    const analysis = await analyzeTranscript(
+      transcription.timestamped_transcript || transcription.text,
+      sopRules
+    );
+
     const agentId = req.body.agent_id || null;
-    let agentName = 'Unknown Agent';
+    let agentName = "Unknown Agent";
 
     if (agentId) {
       const { data: agent } = await supabase
@@ -68,7 +72,7 @@ export const uploadCall = async (req, res) => {
         sentiment: analysis.sentiment,
         sentiment_score: analysis.sentiment_score,
         sop_compliance_percentage: analysis.sop_compliance_percentage,
-        violations: analysis.violations,
+        violations: JSON.stringify(analysis.violations),
         passed_checks: analysis.passed_checks,
         payment_preference: analysis.payment_preference,
         summary: analysis.summary,
