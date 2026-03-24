@@ -6,7 +6,8 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 export const analyzeTranscript = async (transcript, sopRules) => {
   const prompt = `
-You are a call center compliance analyst. Analyze the following call transcript against the SOP rules provided.
+You are an expert call center compliance analyst and agent coach.
+Analyze the following call transcript against the SOP rules provided.
 
 The transcript includes timestamps in the format [M:SS–M:SS] at the start of each segment.
 Use these timestamps to identify WHEN each violation occurred.
@@ -23,16 +24,25 @@ Respond ONLY in this exact JSON format with no extra text:
   "sentiment_score": 0.0 to 1.0,
   "sop_compliance_percentage": 0 to 100,
   "violations": [
-    { "text": "violation description", "timestamp": "0:00–0:12" },
-    { "text": "violation description", "timestamp": "0:45–1:02" }
+    {
+      "text": "clear description of what the agent did wrong",
+      "timestamp": "0:00–0:12",
+      "coaching": "specific, actionable tip on how to fix this. Include an example script if relevant."
+    }
   ],
   "passed_checks": ["check 1", "check 2"],
   "payment_preference": "cash" | "card" | "upi" | "unknown",
   "summary": "brief summary of the call"
 }
 
-For violations, always include the timestamp range from the transcript where the violation was detected.
-If you cannot determine a specific timestamp for a violation, use "0:00–end".
+Rules for violations:
+- Always include the timestamp range from the transcript where the violation was detected
+- If you cannot determine a specific timestamp, use "0:00–end"
+- For coaching, be specific and practical — give the agent exact words they could use
+- Keep coaching tips concise, under 2 sentences
+
+Rules for passed_checks:
+- List each SOP rule that was successfully followed
 `;
 
   try {
@@ -46,11 +56,15 @@ If you cannot determine a specific timestamp for a violation, use "0:00–end".
     const clean = raw.replace(/```json|```/g, "").trim();
     const parsed = JSON.parse(clean);
 
-    // Normalize violations — handle both old string format and new object format
+    // Normalize violations
     if (parsed.violations && Array.isArray(parsed.violations)) {
       parsed.violations = parsed.violations.map(v => {
-        if (typeof v === "string") return { text: v, timestamp: null };
-        return v;
+        if (typeof v === "string") return { text: v, timestamp: null, coaching: null };
+        return {
+          text: v.text || v,
+          timestamp: v.timestamp || null,
+          coaching: v.coaching || null,
+        };
       });
     }
 
