@@ -1,25 +1,19 @@
 import supabase from "../services/supabaseService.js";
 import { success, error } from "../utils/responseHelper.js";
 
-// Overall dashboard stats
 export const getDashboardStats = async (req, res) => {
   try {
     const { data, error: dbError } = await supabase
       .from("calls")
-      .select(
-        "id, sentiment, sop_compliance_percentage, language, payment_preference, created_at"
-      );
+      .select("id, sentiment, sop_compliance_percentage, language, payment_preference, created_at");
 
     if (dbError) throw new Error(dbError.message);
 
     const total = data.length;
     const flagged = data.filter((c) => c.sop_compliance_percentage < 70).length;
-    const avgCompliance =
-      total > 0
-        ? Math.round(
-            data.reduce((sum, c) => sum + (c.sop_compliance_percentage || 0), 0) / total
-          )
-        : 0;
+    const avgCompliance = total > 0
+      ? Math.round(data.reduce((sum, c) => sum + (c.sop_compliance_percentage || 0), 0) / total)
+      : 0;
 
     const sentimentCounts = {
       positive: data.filter((c) => c.sentiment === "positive").length,
@@ -39,6 +33,29 @@ export const getDashboardStats = async (req, res) => {
       return acc;
     }, {});
 
+    // Best and worst performing day
+    const dayMap = {};
+    data.forEach((c) => {
+      const day = new Date(c.created_at).toISOString().split("T")[0];
+      if (!dayMap[day]) dayMap[day] = { sum: 0, count: 0 };
+      dayMap[day].sum += c.sop_compliance_percentage || 0;
+      dayMap[day].count += 1;
+    });
+
+    const dayAverages = Object.entries(dayMap).map(([date, val]) => ({
+      date,
+      avg: Math.round(val.sum / val.count),
+      count: val.count,
+    }));
+
+    const bestDay = dayAverages.length > 0
+      ? dayAverages.reduce((a, b) => a.avg > b.avg ? a : b)
+      : null;
+
+    const worstDay = dayAverages.length > 0
+      ? dayAverages.reduce((a, b) => a.avg < b.avg ? a : b)
+      : null;
+
     return success(res, {
       total_calls: total,
       flagged_calls: flagged,
@@ -46,13 +63,14 @@ export const getDashboardStats = async (req, res) => {
       sentiment_breakdown: sentimentCounts,
       language_breakdown: languageCounts,
       payment_preference_breakdown: paymentCounts,
+      best_day: bestDay,
+      worst_day: worstDay,
     });
   } catch (err) {
     return error(res, err.message);
   }
 };
 
-// Compliance trend over time (last 7 days)
 export const getComplianceTrend = async (req, res) => {
   try {
     const sevenDaysAgo = new Date();
@@ -66,7 +84,6 @@ export const getComplianceTrend = async (req, res) => {
 
     if (dbError) throw new Error(dbError.message);
 
-    // Group by day
     const trend = {};
     data.forEach((c) => {
       const day = new Date(c.created_at).toISOString().split("T")[0];
@@ -87,7 +104,6 @@ export const getComplianceTrend = async (req, res) => {
   }
 };
 
-// Top violations across all calls
 export const getTopViolations = async (req, res) => {
   try {
     const { data, error: dbError } = await supabase
@@ -100,7 +116,9 @@ export const getTopViolations = async (req, res) => {
     data.forEach((c) => {
       if (c.violations && Array.isArray(c.violations)) {
         c.violations.forEach((v) => {
-          violationCounts[v] = (violationCounts[v] || 0) + 1;
+          // Handle both string and object violations
+          const key = typeof v === "object" && v !== null ? v.text : v;
+          if (key) violationCounts[key] = (violationCounts[key] || 0) + 1;
         });
       }
     });
@@ -111,6 +129,63 @@ export const getTopViolations = async (req, res) => {
       .slice(0, 10);
 
     return success(res, sorted);
+  } catch (err) {
+    return error(res, err.message);
+  }
+};
+
+// Violation count per SOP rule
+export const getViolationsByRule = async (req, res) => {
+  try {
+    const { data: callsData, error: dbError } = await supabase
+      .from("calls")
+      .select("violations");
+
+    if (dbError) throw new Error(dbError.message);
+
+    // Get user's SOP rules
+    const { data: rules, error: rulesError } = await supabase
+      .from("sop_rules")
+      .select("id, rule_text, category")
+      .eq("user_id", req.user.id)
+      .order("created_at", { ascending: true });
+
+    if (rulesError) throw new Error(rulesError.message);
+
+    // Count all violations
+    const violationCounts = {};
+    callsData.forEach((c) => {
+      if (c.violations && Array.isArray(c.violations)) {
+        c.violations.forEach((v) => {
+          const key = typeof v === "object" && v !== null ? v.text : v;
+          if (key) violationCounts[key] = (violationCounts[key] || 0) + 1;
+        });
+      }
+    });
+
+    // Match violations to rules by fuzzy text matching
+    const ruleStats = (rules || []).map((rule) => {
+      // Find violations that mention this rule's keywords
+      const ruleWords = rule.rule_text.toLowerCase().split(" ").filter(w => w.length > 4);
+      let count = 0;
+      Object.entries(violationCounts).forEach(([violation, vCount]) => {
+        const vLower = violation.toLowerCase();
+        const matches = ruleWords.filter(w => vLower.includes(w)).length;
+        if (matches >= 2) count += vCount;
+      });
+
+      return {
+        rule_id: rule.id,
+        rule_text: rule.rule_text,
+        category: rule.category,
+        violation_count: count,
+      };
+    });
+
+    // Sort by most violated
+    ruleStats.sort((a, b) => b.violation_count - a.violation_count);
+
+    return success(res, ruleStats);
   } catch (err) {
     return error(res, err.message);
   }

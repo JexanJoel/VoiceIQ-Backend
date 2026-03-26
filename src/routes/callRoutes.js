@@ -6,6 +6,7 @@ import {
   getFlaggedCalls,
   deleteCall,
   getSignedUrl,
+  reviewCall,
 } from "../controllers/callController.js";
 import { upload } from "../middleware/uploadMiddleware.js";
 
@@ -17,5 +18,6 @@ router.get("/flagged", getFlaggedCalls);
 router.get("/:id/audio", getSignedUrl);
 router.get("/:id", getCallById);
 router.delete("/:id", deleteCall);
+router.patch("/:id/review", reviewCall);
 
 export default router;

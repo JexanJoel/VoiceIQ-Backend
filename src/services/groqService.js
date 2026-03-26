@@ -27,6 +27,7 @@ Respond ONLY in this exact JSON format with no extra text:
     {
       "text": "clear description of what the agent did wrong",
       "timestamp": "0:00–0:12",
+      "severity": "critical" | "major" | "minor",
       "coaching": "specific, actionable tip on how to fix this. Include an example script if relevant."
     }
   ],
@@ -38,6 +39,7 @@ Respond ONLY in this exact JSON format with no extra text:
 Rules for violations:
 - Always include the timestamp range from the transcript where the violation was detected
 - If you cannot determine a specific timestamp, use "0:00–end"
+- severity must be one of: "critical" (compliance-breaking, legal/reputation risk), "major" (significant SOP breach), "minor" (small lapse, easily corrected)
 - For coaching, be specific and practical — give the agent exact words they could use
 - Keep coaching tips concise, under 2 sentences
 
@@ -56,13 +58,13 @@ Rules for passed_checks:
     const clean = raw.replace(/```json|```/g, "").trim();
     const parsed = JSON.parse(clean);
 
-    // Normalize violations
     if (parsed.violations && Array.isArray(parsed.violations)) {
       parsed.violations = parsed.violations.map(v => {
-        if (typeof v === "string") return { text: v, timestamp: null, coaching: null };
+        if (typeof v === "string") return { text: v, timestamp: null, severity: "major", coaching: null };
         return {
           text: v.text || v,
           timestamp: v.timestamp || null,
+          severity: v.severity || "major",
           coaching: v.coaching || null,
         };
       });

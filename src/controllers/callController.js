@@ -42,7 +42,6 @@ export const uploadCall = async (req, res) => {
     const transcription = await transcribeAudio(file.path);
     const sopRules = await getUserSOP(req.user.id);
 
-    // Pass timestamped transcript to AI for better violation detection
     const analysis = await analyzeTranscript(
       transcription.timestamped_transcript || transcription.text,
       sopRules
@@ -168,6 +167,37 @@ export const getSignedUrl = async (req, res) => {
       .createSignedUrl(call.storage_path, 3600);
     if (urlError) throw new Error(urlError.message);
     return success(res, { url: data.signedUrl });
+  } catch (err) {
+    return error(res, err.message);
+  }
+};
+
+export const reviewCall = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Get current reviewed_at
+    const { data: call, error: fetchError } = await supabase
+      .from("calls")
+      .select("reviewed_at")
+      .eq("id", id)
+      .single();
+
+    if (fetchError) throw new Error(fetchError.message);
+    if (!call) return error(res, "Call not found", 404);
+
+    // Toggle — if already reviewed set to null, if not set to now
+    const newReviewedAt = call.reviewed_at ? null : new Date().toISOString();
+
+    const { data, error: dbError } = await supabase
+      .from("calls")
+      .update({ reviewed_at: newReviewedAt })
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (dbError) throw new Error(dbError.message);
+    return success(res, data, newReviewedAt ? "Marked as reviewed" : "Marked as unreviewed");
   } catch (err) {
     return error(res, err.message);
   }
