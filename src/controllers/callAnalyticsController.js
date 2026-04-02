@@ -4,6 +4,14 @@ import os from "os";
 import { transcribeAudio } from "../services/whisperService.js";
 import { analyzeForHackathon } from "../services/groqService.js";
 
+// Clean garbled unicode from Whisper output — keep ASCII + Tamil + Hindi
+const cleanTranscript = (text) => {
+  return text
+    .replace(/[^\x00-\x7F\u0B80-\u0BFF\u0900-\u097F\s.,!?'"():;\-₹%]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+};
+
 /**
  * POST /api/call-analytics
  * Auth: x-api-key header
@@ -39,9 +47,15 @@ export const analyzeCall = async (req, res) => {
     // ── Transcribe with Whisper ───────────────────────────────────────────
     const transcription = await transcribeAudio(tempFilePath);
 
+    // ── Clean transcript ──────────────────────────────────────────────────
+    const cleanedText = cleanTranscript(transcription.text);
+    const cleanedTimestamped = transcription.timestamped_transcript
+      ? cleanTranscript(transcription.timestamped_transcript)
+      : cleanedText;
+
     // ── Analyze with Groq ─────────────────────────────────────────────────
     const analysis = await analyzeForHackathon(
-      transcription.timestamped_transcript || transcription.text,
+      cleanedTimestamped || cleanedText,
       language
     );
 
@@ -54,7 +68,7 @@ export const analyzeCall = async (req, res) => {
     return res.status(200).json({
       status: "success",
       language: language,
-      transcript: transcription.text,
+      transcript: cleanedText,
       summary: analysis.summary,
       sop_validation: analysis.sop_validation,
       analytics: analysis.analytics,
