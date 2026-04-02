@@ -25,7 +25,7 @@
 
 VoiceIQ Backend is a Node.js/Express REST API that powers AI-driven call center compliance analysis. It accepts MP3 audio recordings of Indian call center conversations (Hinglish / Tanglish), transcribes them using Groq Whisper, and runs multi-stage NLP analysis using Llama 3.3 70B to produce structured compliance reports.
 
-Built for **HCL GUVI Intern Hiring Hackathon 2026 — Track 3: Call Center Compliance.**
+Built for **HCL GUVI Intern Hiring Hackathon 2026 - Track 3: Call Center Compliance.**
 
 ---
 
@@ -57,7 +57,7 @@ Accepts a Base64-encoded MP3 audio file and returns a full compliance analysis.
 
 **Request:**
 ```bash
-curl -X POST https://your-render-url.onrender.com/api/call-analytics \
+curl -X POST https://voiceiq-backend-8f4q.onrender.com/api/call-analytics \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
