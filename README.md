@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🎙️ VoiceIQ — Backend API
+# 🎙️ VoiceIQ - Backend API
 
 **AI-powered call center compliance engine for Indian call centers**
 
@@ -216,7 +216,7 @@ Server starts at `http://localhost:5000`
 ## 🌐 Deployed URL
 
 ```
-https://your-render-url.onrender.com
+https://voiceiq-backend-8f4q.onrender.com
 ```
 
 Hackathon evaluation endpoint:
@@ -280,7 +280,7 @@ The API evaluates 5 stages of a standard call center script:
 | `BUDGET_CONSTRAINTS` | Customer cited lack of funds |
 | `ALREADY_PAID` | Customer claims prior payment |
 | `NOT_INTERESTED` | Customer declined product/service |
-| `NONE` | No rejection — payment agreed or N/A |
+| `NONE` | No rejection - payment agreed or N/A |
 
 </div>
 
@@ -307,7 +307,7 @@ The API evaluates 5 stages of a standard call center script:
 
 <div align="center">
 
-Built with ❤️ for **HCL GUVI Intern Hiring Hackathon 2026** — Track 3: Call Center Compliance
+Built with ❤️ for **HCL GUVI Intern Hiring Hackathon 2026** - Track 3: Call Center Compliance
 
 [![Report Bug](https://img.shields.io/badge/🐛_Report_Bug-D22128?style=for-the-badge)](https://github.com/JexanJoel/VoiceIQ-backend/issues)
 
