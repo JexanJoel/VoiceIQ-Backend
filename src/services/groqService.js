@@ -100,18 +100,39 @@ Your JSON must follow this EXACT structure:
   "keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5", "keyword6", "keyword7", "keyword8", "keyword9", "keyword10"]
 }
 
-Rules:
-- greeting: true if agent opened with a greeting (Hello, Vanakkam, Namaste, Hi, etc.)
-- identification: true if agent verified customer identity (name, account number, etc.)
-- problemStatement: true if agent clearly stated the purpose/issue of the call
-- solutionOffering: true if agent offered a solution, product, or resolution
-- closing: true if agent ended with a closing statement (Thank you, Goodbye, etc.)
+SOP Rules:
+- greeting: true if agent opened with ANY greeting (Hello, Vanakkam, Namaste, Hi, Good morning, etc.)
+- identification: true if agent called the customer by name OR customer confirmed their name during the call
+- problemStatement: true if agent clearly stated the purpose or issue of the call
+- solutionOffering: true if agent offered any solution, product, service, or next steps
+- closing: true if agent ended with any closing statement (Thank you, Okay fine, Bye, etc.)
 - complianceScore: fraction of the 5 SOP steps that were followed (e.g. 4/5 = 0.8)
 - adherenceStatus: "FOLLOWED" only if ALL 5 steps are true, otherwise "NOT_FOLLOWED"
-- paymentPreference: detect from customer's intent — EMI (installments), FULL_PAYMENT (pay all at once), PARTIAL_PAYMENT (pay part now), DOWN_PAYMENT (initial deposit). Use NONE if no payment discussed.
-- rejectionReason: only if customer refused or could not pay — HIGH_INTEREST (complained about interest/rate), BUDGET_CONSTRAINTS (no money / tight budget), ALREADY_PAID (already paid), NOT_INTERESTED (doesn't want the product/service). Use NONE if payment was agreed or no rejection.
-- sentiment: overall tone of the call — Positive (friendly, agreed, cooperative), Negative (angry, refused, frustrated), Neutral (professional, no strong emotion)
-- keywords: exactly 10 most important domain-specific keywords or phrases from the transcript. These must be actual words/phrases from the conversation.
+
+Payment Rules (IMPORTANT):
+- EMI: agent OR customer mentions installments, EMI, monthly payments, or paying in parts over time — classify as EMI even if customer hasn't confirmed yet
+- FULL_PAYMENT: customer agrees to pay the full amount at once
+- PARTIAL_PAYMENT: customer offers to pay part now and rest later
+- DOWN_PAYMENT: customer agrees to pay an initial deposit
+- NONE: absolutely no payment discussion in the entire call
+- If agent mentions course fee with EMI options (e.g. "73,000 with EMI up to 24 months"), classify as EMI
+
+Rejection Rules:
+- HIGH_INTEREST: customer complains about interest rate or fee being too high
+- BUDGET_CONSTRAINTS: customer says they don't have money / tight budget this month
+- ALREADY_PAID: customer claims they already paid
+- NOT_INTERESTED: customer doesn't want the product or service
+- NONE: no rejection — payment was agreed, or call ended positively, or no payment discussed
+
+Sentiment Rules:
+- Positive: customer is friendly, cooperative, agreed to next steps
+- Negative: customer is angry, frustrated, or refused
+- Neutral: professional tone, no strong positive or negative emotion
+
+Keyword Rules:
+- Extract exactly 10 keywords or phrases that are most relevant to the call's domain and content
+- Keywords must be actual terms spoken or implied in the conversation (course names, topics, amounts, actions)
+- Avoid generic words like "call", "agent", "customer"
 `;
 
   try {
