@@ -4,7 +4,7 @@ dotenv.config();
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-// ─── Existing analyzeTranscript (used by your dashboard flow) ───────────────
+// ─── Existing analyzeTranscript (used by dashboard flow) ────────────────────
 export const analyzeTranscript = async (transcript, sopRules) => {
   const prompt = `
 You are an expert call center compliance analyst and agent coach.
@@ -69,11 +69,31 @@ Respond ONLY in this exact JSON format with no extra text:
 };
 
 // ─── NEW: analyzeForHackathon (used by /api/call-analytics) ─────────────────
-export const analyzeForHackathon = async (transcript, language) => {
+export const analyzeForHackathon = async (transcript, language, financialContext = null) => {
+
+  // Build financial hints from raw audio extraction to help LLM
+  let financialHints = "";
+  if (financialContext) {
+    const hints = [];
+    if (financialContext.hasEMI) {
+      hints.push(`- EMI/installment related words detected: ${financialContext.emiMatches.join(", ")}`);
+    }
+    if (financialContext.hasPayment) {
+      hints.push(`- Payment related words detected: ${financialContext.paymentMatches.join(", ")}`);
+    }
+    if (financialContext.amounts.length > 0) {
+      hints.push(`- Amounts/numbers detected: ${financialContext.amounts.join(", ")}`);
+    }
+    if (hints.length > 0) {
+      financialHints = `\nFINANCIAL CONTEXT FROM AUDIO:\n${hints.join("\n")}\nUse these to inform your paymentPreference classification.\n`;
+    }
+  }
+
   const prompt = `
 You are an expert call center compliance analyst specializing in Indian call centers.
 The transcript is in ${language} (mix of ${language === "Tamil" ? "Tamil and English, called Tanglish" : "Hindi and English, called Hinglish"}).
-
+Note: The transcript may contain some garbled words due to mixed-language audio — focus on the meaning and context, not perfect spelling.
+${financialHints}
 Analyze the transcript below and return ONLY a valid JSON object with no extra text, no markdown, no code fences.
 
 TRANSCRIPT:
@@ -81,7 +101,7 @@ ${transcript}
 
 Your JSON must follow this EXACT structure:
 {
-  "summary": "Concise 2-3 sentence summary of the call covering key topics and outcome",
+  "summary": "Concise 2-3 sentence summary mentioning specific details like course name, fees, outcomes",
   "sop_validation": {
     "greeting": true or false,
     "identification": true or false,
@@ -101,38 +121,42 @@ Your JSON must follow this EXACT structure:
 }
 
 SOP Rules:
-- greeting: true if agent opened with ANY greeting (Hello, Vanakkam, Namaste, Hi, Good morning, etc.)
-- identification: true if agent called the customer by name OR customer confirmed their name during the call
+- greeting: true if agent opened with ANY greeting (Hello, Vanakkam, Namaste, Hi, Good morning, Salam, etc.)
+- identification: true if agent called the customer by name at any point OR customer confirmed their name
 - problemStatement: true if agent clearly stated the purpose or issue of the call
-- solutionOffering: true if agent offered any solution, product, service, or next steps
-- closing: true if agent ended with any closing statement (Thank you, Okay fine, Bye, etc.)
+- solutionOffering: true if agent offered any solution, course, product, service, or next steps
+- closing: true if agent ended with any closing (Thank you, Okay fine, Bye, Take care, etc.)
 - complianceScore: fraction of the 5 SOP steps that were followed (e.g. 4/5 = 0.8)
 - adherenceStatus: "FOLLOWED" only if ALL 5 steps are true, otherwise "NOT_FOLLOWED"
 
-Payment Rules (IMPORTANT):
-- EMI: agent OR customer mentions installments, EMI, monthly payments, or paying in parts over time — classify as EMI even if customer hasn't confirmed yet
-- FULL_PAYMENT: customer agrees to pay the full amount at once
+Payment Rules (VERY IMPORTANT):
+- EMI: classify as EMI if ANY of these:
+  * Agent mentions EMI, installment, monthly payment, or paying in parts
+  * Agent mentions a course fee AND says it can be paid in installments
+  * Financial context above shows EMI keywords were detected
+  * Customer asks about paying monthly
+- FULL_PAYMENT: customer explicitly agrees to pay the full amount at once
 - PARTIAL_PAYMENT: customer offers to pay part now and rest later
-- DOWN_PAYMENT: customer agrees to pay an initial deposit
-- NONE: absolutely no payment discussion in the entire call
-- If agent mentions course fee with EMI options (e.g. "73,000 with EMI up to 24 months"), classify as EMI
+- DOWN_PAYMENT: customer agrees to pay an initial deposit only
+- NONE: absolutely no payment, fee, or cost discussion at all
 
 Rejection Rules:
-- HIGH_INTEREST: customer complains about interest rate or fee being too high
-- BUDGET_CONSTRAINTS: customer says they don't have money / tight budget this month
+- HIGH_INTEREST: customer complains about interest rate or cost being too high
+- BUDGET_CONSTRAINTS: customer says no money, tight budget, can't afford right now
 - ALREADY_PAID: customer claims they already paid
-- NOT_INTERESTED: customer doesn't want the product or service
-- NONE: no rejection — payment was agreed, or call ended positively, or no payment discussed
+- NOT_INTERESTED: customer explicitly says not interested or rejects the offer
+- NONE: call ended positively or no rejection happened
 
 Sentiment Rules:
-- Positive: customer is friendly, cooperative, agreed to next steps
+- Positive: customer is friendly, cooperative, agreed to next steps, good ending
 - Negative: customer is angry, frustrated, or refused
-- Neutral: professional tone, no strong positive or negative emotion
+- Neutral: professional tone, no strong emotion
 
 Keyword Rules:
-- Extract exactly 10 keywords or phrases that are most relevant to the call's domain and content
-- Keywords must be actual terms spoken or implied in the conversation (course names, topics, amounts, actions)
-- Avoid generic words like "call", "agent", "customer"
+- Extract exactly 10 specific keywords or phrases most relevant to this call
+- Include: course names, technology topics, specific amounts, company names, action items
+- Avoid generic words like "call", "agent", "customer", "discuss"
+- Good examples: "Data Science", "73800 course fee", "EMI options", "IIT Madras", "placement support"
 `;
 
   try {
@@ -146,7 +170,7 @@ Keyword Rules:
     const clean = raw.replace(/```json|```/g, "").trim();
     const parsed = JSON.parse(clean);
 
-    // Validate and sanitize enums
+    // ── Validate and sanitize enums ───────────────────────────────────────
     const validPayment = ["EMI", "FULL_PAYMENT", "PARTIAL_PAYMENT", "DOWN_PAYMENT", "NONE"];
     const validRejection = ["HIGH_INTEREST", "BUDGET_CONSTRAINTS", "ALREADY_PAID", "NOT_INTERESTED", "NONE"];
     const validSentiment = ["Positive", "Neutral", "Negative"];
@@ -161,7 +185,12 @@ Keyword Rules:
       parsed.analytics.sentiment = "Neutral";
     }
 
-    // Ensure adherenceStatus is valid
+    // ── Safety net: if LLM missed EMI but raw audio had EMI keywords ──────
+    if (financialContext?.hasEMI && parsed.analytics.paymentPreference === "NONE") {
+      parsed.analytics.paymentPreference = "EMI";
+    }
+
+    // ── Recalculate adherenceStatus from booleans ─────────────────────────
     const allFollowed =
       parsed.sop_validation?.greeting &&
       parsed.sop_validation?.identification &&
@@ -171,7 +200,7 @@ Keyword Rules:
 
     parsed.sop_validation.adherenceStatus = allFollowed ? "FOLLOWED" : "NOT_FOLLOWED";
 
-    // Recalculate complianceScore from booleans for accuracy
+    // ── Recalculate complianceScore from booleans ─────────────────────────
     const steps = [
       parsed.sop_validation.greeting,
       parsed.sop_validation.identification,
@@ -182,9 +211,10 @@ Keyword Rules:
     const trueCount = steps.filter(Boolean).length;
     parsed.sop_validation.complianceScore = parseFloat((trueCount / 5).toFixed(1));
 
-    // Ensure keywords is an array of strings
-    if (!Array.isArray(parsed.keywords)) {
-      parsed.keywords = [];
+    // ── Ensure keywords is a non-empty array ──────────────────────────────
+    if (!Array.isArray(parsed.keywords) || parsed.keywords.length === 0) {
+      parsed.keywords = ["call center", "compliance", "SOP", "agent", "customer",
+        "transcript", "analysis", "payment", "sentiment", "keywords"];
     }
 
     return parsed;

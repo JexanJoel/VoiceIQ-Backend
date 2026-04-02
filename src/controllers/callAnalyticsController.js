@@ -4,12 +4,27 @@ import os from "os";
 import { transcribeAudio } from "../services/whisperService.js";
 import { analyzeForHackathon } from "../services/groqService.js";
 
-// Clean garbled unicode from Whisper output — keep ASCII + Tamil + Hindi
+// Clean garbled unicode — keep ASCII + Tamil + Hindi + common punctuation
 const cleanTranscript = (text) => {
   return text
-    .replace(/[^\x00-\x7F\u0B80-\u0BFF\u0900-\u097F\s.,!?'"():;\-₹%]/g, "")
+    .replace(/[^\x00-\x7F\u0B80-\u0BFF\u0900-\u097F\s.,!?'"():;\-₹%0-9]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+};
+
+// Extract numbers and amounts from raw transcript for payment context
+const extractFinancialContext = (rawText) => {
+  const amounts = rawText.match(/[\d,]+(?:\.\d+)?/g) || [];
+  const emiKeywords = rawText.match(/EMI|installment|monthly|மாதம்|किस्त|மாதாமாதம்/gi) || [];
+  const paymentKeywords = rawText.match(/pay|payment|fee|cost|amount|கட்டணம்|fees|பணம்|rupee|₹/gi) || [];
+
+  return {
+    amounts: [...new Set(amounts.filter(a => a.length > 2))].slice(0, 10),
+    hasEMI: emiKeywords.length > 0,
+    hasPayment: paymentKeywords.length > 0,
+    emiMatches: emiKeywords,
+    paymentMatches: paymentKeywords,
+  };
 };
 
 /**
@@ -44,19 +59,26 @@ export const analyzeCall = async (req, res) => {
     tempFilePath = path.join(os.tmpdir(), `voiceiq_${Date.now()}.${ext}`);
     fs.writeFileSync(tempFilePath, buffer);
 
-    // ── Transcribe with Whisper ───────────────────────────────────────────
-    const transcription = await transcribeAudio(tempFilePath);
+    // ── Transcribe with Whisper (pass language hint) ──────────────────────
+    const transcription = await transcribeAudio(tempFilePath, language);
 
     // ── Clean transcript ──────────────────────────────────────────────────
-    const cleanedText = cleanTranscript(transcription.text);
+    const rawText = transcription.text;
+    const cleanedText = cleanTranscript(rawText);
     const cleanedTimestamped = transcription.timestamped_transcript
       ? cleanTranscript(transcription.timestamped_transcript)
       : cleanedText;
 
+    // ── Extract financial context from RAW text (before cleaning) ─────────
+    // Raw text preserves numbers and mixed-language payment terms better
+    const financialContext = extractFinancialContext(rawText);
+
     // ── Analyze with Groq ─────────────────────────────────────────────────
+    // Pass cleaned timestamped transcript + financial hints from raw text
     const analysis = await analyzeForHackathon(
       cleanedTimestamped || cleanedText,
-      language
+      language,
+      financialContext
     );
 
     // ── Clean up temp file ────────────────────────────────────────────────
@@ -75,7 +97,6 @@ export const analyzeCall = async (req, res) => {
       keywords: analysis.keywords,
     });
   } catch (err) {
-    // Clean up temp file on error
     if (tempFilePath && fs.existsSync(tempFilePath)) {
       fs.unlinkSync(tempFilePath);
     }
