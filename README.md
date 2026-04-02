@@ -6,9 +6,16 @@
 
 <br/>
 
-[![API Status](https://img.shields.io/badge/API-Live-16A34A?style=for-the-badge)](https://your-render-url.onrender.com)
-[![License](https://img.shields.io/badge/License-Apache_2.0-D22128?style=for-the-badge&logo=apache&logoColor=white)](./LICENSE)
-[![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/JexanJoel/VoiceIQ-backend)
+<div align="center">
+<table>
+  <tr>
+    <td align="center"><a href="https://voiceiq-backend-8f4q.onrender.com"><img src="https://img.shields.io/badge/API-Live-16A34A?style=for-the-badge"/></a></td>
+    <td align="center"><a href="https://voice-iq-ai.vercel.app/"><img src="https://img.shields.io/badge/🚀_Frontend-4F46E5?style=for-the-badge"/></a></td>
+    <td align="center"><a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-D22128?style=for-the-badge&logo=apache&logoColor=white"/></a></td>
+    <td align="center"><a href="https://github.com/JexanJoel/VoiceIQ-Backend"><img src="https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white"/></a></td>
+  </tr>
+</table>
+</div>
 
 </div>
 
@@ -24,6 +31,8 @@ Built for **HCL GUVI Intern Hiring Hackathon 2026 — Track 3: Call Center Compl
 
 ## 🛠️ Tech Stack
 
+<div align="center">
+
 | Layer | Technology |
 |:---:|:---:|
 | **Runtime** | Node.js (ESM) |
@@ -33,6 +42,8 @@ Built for **HCL GUVI Intern Hiring Hackathon 2026 — Track 3: Call Center Compl
 | **Database** | Supabase (PostgreSQL + Storage) |
 | **Auth** | Supabase JWT + x-api-key header |
 | **Deploy** | Render |
+
+</div>
 
 ---
 
@@ -55,6 +66,7 @@ curl -X POST https://your-render-url.onrender.com/api/call-analytics \
     "audioBase64": "SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU2LjM2LjEwMAAAAAAA..."
   }'
 ```
+<div align="center">
 
 **Request Body:**
 
@@ -63,6 +75,8 @@ curl -X POST https://your-render-url.onrender.com/api/call-analytics \
 | `language` | string | `Tamil` or `Hindi` |
 | `audioFormat` | string | Always `mp3` |
 | `audioBase64` | string | Base64-encoded MP3 audio |
+
+</div>
 
 **Response:**
 ```json
@@ -228,6 +242,8 @@ All tables have Row Level Security (RLS) enabled.
 
 The API evaluates 5 stages of a standard call center script:
 
+<div align="center">
+
 | Stage | Description |
 |---|---|
 | `greeting` | Agent opened with Hello / Vanakkam / Namaste |
@@ -236,6 +252,8 @@ The API evaluates 5 stages of a standard call center script:
 | `solutionOffering` | Agent offered a solution or product |
 | `closing` | Agent ended with a closing statement |
 
+</div>
+
 `complianceScore` = number of true steps / 5 (recalculated from booleans, not LLM-generated)
 
 `adherenceStatus` = `FOLLOWED` only if all 5 are true, otherwise `NOT_FOLLOWED`
@@ -243,6 +261,8 @@ The API evaluates 5 stages of a standard call center script:
 ---
 
 ## 💳 Payment & Rejection Classification
+
+<div align="center">
 
 **Payment Preference:**
 | Value | Meaning |
@@ -262,15 +282,7 @@ The API evaluates 5 stages of a standard call center script:
 | `NOT_INTERESTED` | Customer declined product/service |
 | `NONE` | No rejection — payment agreed or N/A |
 
----
-
-## 🤖 AI Tools Used
-
-| Tool | Usage |
-|---|---|
-| **Groq Whisper large-v3** | Speech-to-text transcription of Hinglish/Tanglish audio |
-| **Groq Llama 3.3 70B Versatile** | SOP compliance analysis, payment classification, sentiment, keyword extraction |
-| **Claude (Anthropic)** | Development assistance — code generation, prompt engineering, architecture guidance |
+</div>
 
 ---
 
@@ -279,13 +291,17 @@ The API evaluates 5 stages of a standard call center script:
 - Audio files above ~25MB may hit Whisper API limits
 - Very noisy or low-quality recordings reduce transcription accuracy
 - Rejection reason detection works best when customer explicitly states their reason
-- Whisper language detection is automatic — `language` field in request is used for LLM context, not to force STT language
+- Whisper language detection is automatic - `language` field in request is used for LLM context, not to force STT language
 
 ---
 
 ## 📄 License
 
+<div align="center">
+
 [![License](https://img.shields.io/badge/License-Apache_2.0-D22128?style=for-the-badge&logo=apache&logoColor=white)](./LICENSE)
+
+</div>
 
 ---
 
