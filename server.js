@@ -7,6 +7,7 @@ import analyticsRoutes from "./src/routes/analyticsRoutes.js";
 import sopRoutes from "./src/routes/sopRoutes.js";
 import agentRoutes from "./src/routes/agentRoutes.js";
 import { authenticate } from "./src/middleware/authMiddleware.js";
+import callAnalyticsRoute from "./src/routes/callAnalyticsRoute.js";
 
 dotenv.config();
 
@@ -19,6 +20,8 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+app.use("/api/call-analytics", callAnalyticsRoute);
 
 app.options('*', cors());
 app.use(express.json());
