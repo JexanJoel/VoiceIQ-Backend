@@ -221,7 +221,7 @@ https://voiceiq-backend-8f4q.onrender.com
 
 Hackathon evaluation endpoint:
 ```
-POST https://your-render-url.onrender.com/api/call-analytics
+POST https://voiceiq-backend-8f4q.onrender.com/api/call-analytics
 ```
 
 ---
