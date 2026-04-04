@@ -29,6 +29,23 @@ Built for **HCL GUVI Intern Hiring Hackathon 2026 - Track 3: Call Center Complia
 
 ---
 
+## 📋 Table of Contents
+
+- [Description](#-description)
+- [Tech Stack](#️-tech-stack)
+- [API Endpoint](#-api-endpoint-hackathon-evaluation)
+- [How It Works](#️-how-it-works)
+- [Project Structure](#-project-structure)
+- [Setup Instructions](#-setup-instructions)
+- [Deployed URL](#-deployed-url)
+- [Database Schema](#️-database-schema-supabase)
+- [SOP Validation Logic](#-sop-validation-logic)
+- [Payment & Rejection Classification](#-payment--rejection-classification)
+- [Known Limitations](#️-known-limitations)
+- [License](#-license)
+
+---
+
 ## 🛠️ Tech Stack
 
 <div align="center">
